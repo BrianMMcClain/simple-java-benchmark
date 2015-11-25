@@ -29,7 +29,7 @@ public class BenchmarkWorker implements Runnable {
 	}
 	
 	public void run() {
-		System.out.println("Started worker" + this.id + ", writing " + this.recordCount + " records");
+		System.err.println("Started worker" + this.id + ", writing " + this.recordCount + " records");
 		
 		RiakNode.Builder builder = new RiakNode.Builder();
     	List<RiakNode> nodes;
@@ -44,7 +44,7 @@ public class BenchmarkWorker implements Runnable {
     	
     	runBenchmarkLoop();		
     	
-    	System.out.println("worker" + this.id + " completed without error");
+    	System.err.println("worker" + this.id + " completed without error");
 	}
 	
 	private void runBenchmarkLoop() {
