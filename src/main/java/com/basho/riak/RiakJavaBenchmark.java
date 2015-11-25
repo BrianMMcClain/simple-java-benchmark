@@ -6,8 +6,8 @@ import java.util.concurrent.Executors;
 public class RiakJavaBenchmark 
 {
 	private static String[] hosts = {"127.0.0.1"};
-	private static int recordCount = 100000;
-	private static int workerPoolSize = 32;
+	private static int recordCount = 1000000;
+	private static int workerPoolSize = 64;
 	
     public static void main( String[] args )
     {    	
@@ -39,5 +39,7 @@ public class RiakJavaBenchmark
     	System.out.println("Records Written: " + recordCount);
     	System.out.println("Total Run Time: " + totalTime);
     	System.out.println("Throughput: " + recordsPerSecond);
+    	
+    	System.exit(0);
     }
 }
