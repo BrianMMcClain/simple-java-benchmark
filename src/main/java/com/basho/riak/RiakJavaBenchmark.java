@@ -6,18 +6,26 @@ import java.util.concurrent.Executors;
 public class RiakJavaBenchmark 
 {
 	private static String[] hosts = {"127.0.0.1"};
-	private static int recordCount = 1000000;
+	private static int recordCount = 10000;
 	private static int workerPoolSize = 64;
 	
     public static void main( String[] args )
-    {    	
-//    	myfamily varchar not null, 
-//    	myseries varchar not null, 
-//    	time timestamp not null, 
-//    	myint sint64 not null, 
-//    	mytext varchar not null, 
-//    	myfloat double not null, 
-//    	mybool boolean not null,
+    {    	    	
+    	if (args.length != 3) {
+    		System.out.println("Usage: RiakJavaBenchmark HOSTS RECORD_COUNT WORKER_COUNT");
+    		System.exit(-1);
+    	}
+    	
+    	hosts = args[0].split(",");
+    	recordCount = new Integer(args[1]);
+    	workerPoolSize = new Integer(args[2]);
+
+    	System.out.println("Hosts:");
+    	for (int i = 0; i < hosts.length; i++) {
+    		System.out.println("   " + hosts[i]);
+    	}
+    	System.out.println("Records: " + recordCount);
+    	System.out.println("Workers: " + workerPoolSize);
     	
     	long startTime = System.currentTimeMillis();
     	
@@ -37,8 +45,8 @@ public class RiakJavaBenchmark
     	float recordsPerSecond = (float) (recordCount / (totalTime / 1000.0));
     	
     	System.out.println("Records Written: " + recordCount);
-    	System.out.println("Total Run Time: " + totalTime);
-    	System.out.println("Throughput: " + recordsPerSecond);
+    	System.out.println("Total Run Time: " + totalTime + " ms");
+    	System.out.println("Throughput: " + recordsPerSecond + " ops/s");
     	
     	System.exit(0);
     }
