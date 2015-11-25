@@ -1,5 +1,7 @@
 package com.basho.riak;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -19,6 +21,13 @@ public class RiakJavaBenchmark
     	hosts = args[0].split(",");
     	recordCount = new Integer(args[1]);
     	workerPoolSize = new Integer(args[2]);
+    	String hostname = "localhost";
+		try {
+			hostname = InetAddress.getLocalHost().getHostName();
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
     	System.out.println("Hosts:");
     	for (int i = 0; i < hosts.length; i++) {
@@ -31,7 +40,7 @@ public class RiakJavaBenchmark
     	
     	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);
     	for (int i = 0; i < workerPoolSize; i++) {
-    		Runnable worker = new BenchmarkWorker(i, hosts, recordCount / workerPoolSize);
+    		Runnable worker = new BenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize);
     		executor.execute(worker);
     	}
     	executor.shutdown();

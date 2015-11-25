@@ -15,13 +15,15 @@ import com.basho.riak.client.core.query.timeseries.Row;
 public class BenchmarkWorker implements Runnable {
 
 	private int id;
+	private String hostname;
 	private String[] hosts;
 	private int recordCount;
 	
 	private RiakClient client;
 	
-	public BenchmarkWorker(int id, String[] hosts, int recordCount) {
+	public BenchmarkWorker(int id, String hostname, String[] hosts, int recordCount) {
 		this.id = id;
+		this.hostname = hostname;
 		this.hosts = hosts;
 		this.recordCount = recordCount;
 	}
@@ -50,7 +52,7 @@ public class BenchmarkWorker implements Runnable {
 		int recordsWritten = 0;
 		while (recordsWritten < this.recordCount) {
 	    	List<Row> rows = Arrays.asList(
-	    		    new Row(new Cell("family1"), 
+	    		    new Row(new Cell(this.hostname), 
 	    		    		new Cell("worker" + this.id), 
 	    		            Cell.newTimestamp(timestamp), 
 	    		            new Cell(1), 
