@@ -10,17 +10,19 @@ public class RiakJavaBenchmark
 	private static String[] hosts = {"127.0.0.1"};
 	private static int recordCount = 10000;
 	private static int workerPoolSize = 64;
+	private static int batchSize = 1;
 	
     public static void main( String[] args )
     {    	    	
-    	if (args.length != 3) {
-    		System.out.println("Usage: RiakJavaBenchmark HOSTS RECORD_COUNT WORKER_COUNT");
+    	if (args.length != 4) {
+    		System.out.println("Usage: RiakJavaBenchmark HOSTS RECORD_COUNT WORKER_COUNT BATCH_SIZE");
     		System.exit(-1);
     	}
     	
     	hosts = args[0].split(",");
     	recordCount = new Integer(args[1]);
     	workerPoolSize = new Integer(args[2]);
+    	batchSize = new Integer(args[3]);
     	String hostname = "localhost";
 		try {
 			hostname = InetAddress.getLocalHost().getHostName();
@@ -40,7 +42,7 @@ public class RiakJavaBenchmark
     	
     	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);
     	for (int i = 0; i < workerPoolSize; i++) {
-    		Runnable worker = new BenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize);
+    		Runnable worker = new BenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize);
     		executor.execute(worker);
     	}
     	executor.shutdown();

@@ -1,6 +1,7 @@
 package com.basho.riak;
 
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -18,14 +19,16 @@ public class BenchmarkWorker implements Runnable {
 	private String hostname;
 	private String[] hosts;
 	private int recordCount;
+	private int batchSize;
 	
 	private RiakClient client;
 	
-	public BenchmarkWorker(int id, String hostname, String[] hosts, int recordCount) {
+	public BenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize) {
 		this.id = id;
 		this.hostname = hostname;
 		this.hosts = hosts;
 		this.recordCount = recordCount;
+		this.batchSize = batchSize;
 	}
 	
 	public void run() {
@@ -51,21 +54,11 @@ public class BenchmarkWorker implements Runnable {
 		long timestamp = System.currentTimeMillis();
 		int recordsWritten = 0;
 		while (recordsWritten < this.recordCount) {
-	    	List<Row> rows = Arrays.asList(
-	    		    new Row(new Cell(this.hostname), 
-	    		    		new Cell("worker" + this.id), 
-	    		            Cell.newTimestamp(timestamp), 
-	    		            new Cell(1), 
-	    		            new Cell("test"),
-	    		            new Cell(1.5),
-	    		            new Cell(true)
-	    		    ));
-	
-	
+	    	List<Row> rows = generateValue(timestamp, this.batchSize);
 	    	Store storeCmd = new Store.Builder("GeoCheckin").withRows(rows).build();
-	    	
 			try {
 				this.client.execute(storeCmd);
+				
 			} catch (ExecutionException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -74,9 +67,28 @@ public class BenchmarkWorker implements Runnable {
 				e.printStackTrace();
 			}
 			
-			timestamp += 1;
-			recordsWritten += 1;
+			timestamp += this.batchSize;
+			recordsWritten += this.batchSize;
     	}
 	}
 
+	private List<Row> generateValue(long startTimestamp, int batchSize) {
+		long timestamp = startTimestamp;
+		List<Row> batch = new ArrayList<Row>();
+		
+		for (int i = 0; i < batchSize; i++) {
+			batch.add(new Row(
+					new Cell(hostname),
+					new Cell("worker" + this.id), 
+		            Cell.newTimestamp(timestamp), 
+		            new Cell(1), 
+		            new Cell("test"),
+		            new Cell(1.5),
+		            new Cell(true)
+			));
+			timestamp++;
+		}
+		
+		return batch;
+	}
 }
