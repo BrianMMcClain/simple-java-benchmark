@@ -78,7 +78,7 @@ public class BenchmarkWorker implements Runnable {
 		
 		for (int i = 0; i < batchSize; i++) {
 			batch.add(new Row(
-					new Cell(hostname),
+					new Cell(this.hostname),
 					new Cell("worker" + this.id), 
 		            Cell.newTimestamp(timestamp), 
 		            new Cell(1), 
