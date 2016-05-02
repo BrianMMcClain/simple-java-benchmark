@@ -2,8 +2,11 @@ package com.basho.riak;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class RiakJavaBenchmark 
 {
@@ -36,18 +39,25 @@ public class RiakJavaBenchmark
     		System.out.println("   " + hosts[i]);
     	}
     	System.out.println("Records: " + recordCount);
+    	System.out.println("Batch Size: " + batchSize);
     	System.out.println("Workers: " + workerPoolSize);
     	
     	long startTime = System.currentTimeMillis();
     	
-    	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);
+    	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize * 2);
     	for (int i = 0; i < workerPoolSize; i++) {
     		Runnable worker = new BenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize);
     		executor.execute(worker);
     	}
     	executor.shutdown();
+    	
     	while(!executor.isTerminated()) {
-    		
+    		try {
+				executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
     	}
     	
     	long endTime = System.currentTimeMillis();
