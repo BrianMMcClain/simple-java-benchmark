@@ -4,6 +4,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 
 import com.basho.riak.client.api.RiakClient;
@@ -21,6 +22,12 @@ public class BenchmarkWorker implements Runnable {
 	private int recordCount;
 	private int batchSize;
 	
+	private Random rand;
+	
+	private final String BUCKET_NAME = "tsycsb";
+	private final int YCSB_ROW_COUNT = 10;
+	private final int YCSB_ROW_SIZE = 100;
+
 	private RiakClient client;
 	
 	public BenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize) {
@@ -29,6 +36,7 @@ public class BenchmarkWorker implements Runnable {
 		this.hosts = hosts;
 		this.recordCount = recordCount;
 		this.batchSize = batchSize;
+		this.rand = new Random(System.currentTimeMillis());
 	}
 	
 	public void run() {
@@ -41,7 +49,7 @@ public class BenchmarkWorker implements Runnable {
     		RiakCluster riakCluster = new RiakCluster.Builder(nodes).build();
     		riakCluster.start();
     		this.client = new RiakClient(riakCluster);
-    	} catch (UnknownHostException e) {
+    	} catch (Exception e) {
     		e.printStackTrace();
     	}
     	
@@ -54,11 +62,10 @@ public class BenchmarkWorker implements Runnable {
 		long timestamp = System.currentTimeMillis();
 		int recordsWritten = 0;
 		while (recordsWritten < this.recordCount) {
-	    	List<Row> rows = generateValue(timestamp, this.batchSize);
-	    	Store storeCmd = new Store.Builder("GeoCheckin").withRows(rows).build();
+	    	List<Row> rows = generateYCSBValue(timestamp, this.batchSize);
+	    	Store storeCmd = new Store.Builder(BUCKET_NAME).withRows(rows).build();
 			try {
 				this.client.execute(storeCmd);
-				
 			} catch (ExecutionException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -72,7 +79,7 @@ public class BenchmarkWorker implements Runnable {
     	}
 	}
 
-	private List<Row> generateValue(long startTimestamp, int batchSize) {
+	private List<Row> generateAllTypeValue(long startTimestamp, int batchSize) {
 		long timestamp = startTimestamp;
 		List<Row> batch = new ArrayList<Row>();
 		
@@ -86,6 +93,28 @@ public class BenchmarkWorker implements Runnable {
 		            new Cell(1.5),
 		            new Cell(true)
 			));
+			timestamp++;
+		}
+		
+		return batch;
+	}
+
+	private List<Row> generateYCSBValue(long startTimestamp, int batchSize) {
+		long timestamp = startTimestamp;
+		List<Row> batch = new ArrayList<Row>();
+		
+		byte buffer [] = new byte[YCSB_ROW_SIZE];
+		
+		for (int i = 0; i < batchSize; i++) {
+			List<Cell> cells = new ArrayList<Cell>();
+			cells.add(new Cell(this.hostname));
+			cells.add(new Cell("worker" + this.id));
+			cells.add(Cell.newTimestamp(timestamp));
+			for (int j = 0; j < YCSB_ROW_COUNT; j++) {
+				rand.nextBytes(buffer);
+				cells.add(new Cell(buffer.toString()));
+			}
+			batch.add(new Row(cells));
 			timestamp++;
 		}
 		
