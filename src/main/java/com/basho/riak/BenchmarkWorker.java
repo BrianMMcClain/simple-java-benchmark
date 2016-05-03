@@ -75,7 +75,7 @@ public class BenchmarkWorker implements Runnable {
 			}
 			
 			timestamp += this.batchSize;
-			recordsWritten += this.batchSize;
+			recordsWritten += 1;
     	}
 	}
 
