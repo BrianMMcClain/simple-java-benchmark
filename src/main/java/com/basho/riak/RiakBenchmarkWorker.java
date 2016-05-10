@@ -43,7 +43,7 @@ public class RiakBenchmarkWorker implements Runnable {
 	}
 	
 	public void run() {
-		log.config("Started worker" + this.id + ", writing " + this.recordCount + " records");
+		log.config("Started riak worker" + this.id + ", writing " + this.recordCount + " records");
 		
 		RiakNode.Builder builder = new RiakNode.Builder();
     	List<RiakNode> nodes;
@@ -115,7 +115,7 @@ public class RiakBenchmarkWorker implements Runnable {
 			cells.add(Cell.newTimestamp(timestamp));
 			for (int j = 0; j < YCSB_ROW_COUNT; j++) {
 				rand.nextBytes(buffer);
-				cells.add(new Cell(buffer.toString()));
+				cells.add(new Cell(new String(buffer)));
 			}
 			batch.add(new Row(cells));
 			timestamp++;

@@ -37,6 +37,8 @@ public class SimpleJavaBenchmark
     	options.addOption(Option.builder("t").longOpt("threads").hasArg().argName("THREADS").desc("Number of worker threads").required().build());
     	options.addOption(Option.builder("b").longOpt("batch").hasArg().argName("BATCH SIZE").desc("How many rows per operation to be written").required().build());
     	options.addOption(Option.builder("v").longOpt("verbose").desc("Verbose logging").build());
+    	//options.addOption(Option.builder("r").longOpt("riak").desc("Run benchmark against Riak (default)").build());
+    	options.addOption(Option.builder("c").longOpt("cassandra").desc("Run benchmark against Cassandra").build());
     	// TODO Add "help" option
     	
     	CommandLine line = null;
@@ -63,6 +65,11 @@ public class SimpleJavaBenchmark
     		log.getHandlers()[0].setLevel(Level.INFO);
     	}
     	
+    	boolean cassandraTest = false;
+    	if (line.hasOption('c')) {
+    		cassandraTest = true;
+    	}
+    	
     	// Attempt to get the machine's hostname
     	String hostname = "localhost";
     	try {
@@ -81,7 +88,12 @@ public class SimpleJavaBenchmark
     	log.info("Starting " + workerPoolSize + " threads writing " + (recordCount / workerPoolSize) + " operations");
     	long startTime = System.currentTimeMillis();
     	for (int i = 0; i < workerPoolSize; i++) {
-    		Runnable worker = new RiakBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, log);
+    		Runnable worker;
+    		if (cassandraTest) {
+    			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, log);
+    		} else {
+    			worker = new RiakBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, log);
+    		}
     		executor.execute(worker);
     	}
     	executor.shutdown();
