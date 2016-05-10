@@ -1,11 +1,11 @@
 package com.basho.riak;
 
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Logger;
 
 import com.basho.riak.client.api.RiakClient;
 import com.basho.riak.client.api.commands.timeseries.Store;
@@ -14,7 +14,7 @@ import com.basho.riak.client.core.RiakNode;
 import com.basho.riak.client.core.query.timeseries.Cell;
 import com.basho.riak.client.core.query.timeseries.Row;
 
-public class BenchmarkWorker implements Runnable {
+public class RiakBenchmarkWorker implements Runnable {
 
 	private int id;
 	private String hostname;
@@ -30,17 +30,20 @@ public class BenchmarkWorker implements Runnable {
 
 	private RiakClient client;
 	
-	public BenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize) {
+	private Logger log;
+	
+	public RiakBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, Logger log) {
 		this.id = id;
 		this.hostname = hostname;
 		this.hosts = hosts;
 		this.recordCount = recordCount;
 		this.batchSize = batchSize;
 		this.rand = new Random(System.currentTimeMillis());
+		this.log = log;
 	}
 	
 	public void run() {
-		System.err.println("Started worker" + this.id + ", writing " + this.recordCount + " records");
+		log.config("Started worker" + this.id + ", writing " + this.recordCount + " records");
 		
 		RiakNode.Builder builder = new RiakNode.Builder();
     	List<RiakNode> nodes;
@@ -55,7 +58,7 @@ public class BenchmarkWorker implements Runnable {
     	
     	runBenchmarkLoop();		
     	
-    	System.err.println("worker" + this.id + " completed without error");
+    	log.config("worker" + this.id + " completed without error");
 	}
 	
 	private void runBenchmarkLoop() {

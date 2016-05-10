@@ -7,7 +7,7 @@ import junit.framework.TestSuite;
 /**
  * Unit test for simple App.
  */
-public class RiakJavaBenchmarkTest 
+public class SimpleJavaBenchmarkTest 
     extends TestCase
 {
     /**
@@ -15,7 +15,7 @@ public class RiakJavaBenchmarkTest
      *
      * @param testName name of the test case
      */
-    public RiakJavaBenchmarkTest( String testName )
+    public SimpleJavaBenchmarkTest( String testName )
     {
         super( testName );
     }
@@ -25,7 +25,7 @@ public class RiakJavaBenchmarkTest
      */
     public static Test suite()
     {
-        return new TestSuite( RiakJavaBenchmarkTest.class );
+        return new TestSuite( SimpleJavaBenchmarkTest.class );
     }
 
     /**
