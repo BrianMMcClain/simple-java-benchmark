@@ -28,6 +28,6 @@ DROP KEYSPACE ycsb; CREATE KEYSPACE ycsb WITH replication = {'class': 'SimpleStr
  A helper script has been provided to assist in create a large number of columns
 
  ```
- $scripts/generate_cassandra_cql.sh 10
+$ scripts/generate_cassandra_cql.sh 10
 DROP KEYSPACE ycsb; CREATE KEYSPACE ycsb WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}; CREATE TABLE ycsb.usertable (time timestamp PRIMARY KEY, family text, series text, field0 text, field1 text, field2 text, field3 text, field4 text, field5 text, field6 text, field7 text, field8 text, field9 text);
 ```
