@@ -28,7 +28,7 @@ public class CassandraBenchmarkWorker implements Runnable {
 	
 	private final String KEYSPACE_NAME = "ycsb";
 	private final String TABLE_NAME = "usertable";
-	private final int YCSB_ROW_COUNT = 10;
+	private int colCount = 10;
 	private final int YCSB_ROW_SIZE = 100;
 
 	private Cluster cluster;
@@ -36,12 +36,13 @@ public class CassandraBenchmarkWorker implements Runnable {
 	
 	private Logger log;
 	
-	public CassandraBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, Logger log) {
+	public CassandraBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, Logger log) {
 		this.id = id;
 		this.hostname = hostname;
 		this.hosts = hosts;
 		this.recordCount = recordCount;
 		this.batchSize = batchSize;
+		this.colCount = colCount;
 		this.rand = new Random(System.currentTimeMillis());
 		this.log = log;
 	}
@@ -108,7 +109,7 @@ public class CassandraBenchmarkWorker implements Runnable {
 		insertStatement.value("series", "worker" + this.id);
 		
 		byte buffer [] = new byte[YCSB_ROW_SIZE];
-		for (int j = 0; j < YCSB_ROW_COUNT; j++) {
+		for (int j = 0; j < colCount; j++) {
 			rand.nextBytes(buffer);
 			insertStatement.value("field" + j, new String(buffer));
 		}

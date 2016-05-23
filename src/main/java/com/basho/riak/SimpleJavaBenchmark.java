@@ -23,6 +23,7 @@ public class SimpleJavaBenchmark
 	private static int recordCount = 10000;
 	private static int workerPoolSize = 64;
 	private static int batchSize = 1;
+    private static int colCount = 10;
 	
 	private static Logger log = Logger.getLogger("");
 	
@@ -36,6 +37,7 @@ public class SimpleJavaBenchmark
     	options.addOption(Option.builder("o").longOpt("ops").hasArg().argName("OPS").desc("Number of operations to perform").required().build());
     	options.addOption(Option.builder("t").longOpt("threads").hasArg().argName("THREADS").desc("Number of worker threads").required().build());
     	options.addOption(Option.builder("b").longOpt("batch").hasArg().argName("BATCH SIZE").desc("How many rows per operation to be written").required().build());
+        options.addOption(Option.builder("n").longOpt("colcount").hasArg().argName("COLUMN COUNT").desc("Number of columns per row").required().build());
     	options.addOption(Option.builder("v").longOpt("verbose").desc("Verbose logging").build());
     	//options.addOption(Option.builder("r").longOpt("riak").desc("Run benchmark against Riak (default)").build());
     	options.addOption(Option.builder("c").longOpt("cassandra").desc("Run benchmark against Cassandra").build());
@@ -54,6 +56,8 @@ public class SimpleJavaBenchmark
     	recordCount = Integer.parseInt(line.getOptionValue("o"));
     	workerPoolSize = Integer.parseInt(line.getOptionValue("t"));
     	batchSize = Integer.parseInt(line.getOptionValue("b"));
+        System.out.println(line.getOptionValue("n"));
+        colCount = Integer.parseInt(line.getOptionValue("n"));
     	
     	// Setup the logger
     	log.getHandlers()[0].setFormatter(new LoggerFormatter());
@@ -82,6 +86,7 @@ public class SimpleJavaBenchmark
     	log.info("Hosts: " + line.getOptionValue("h"));
     	log.info("Record Count: " + recordCount);
     	log.info("Batch Size: " + batchSize);
+        log.info("Column Count: " + colCount);
     	log.info("Threads: " + workerPoolSize);
 
     	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);
@@ -90,7 +95,7 @@ public class SimpleJavaBenchmark
     	for (int i = 0; i < workerPoolSize; i++) {
     		Runnable worker;
     		if (cassandraTest) {
-    			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, log);
+    			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, log);
     		} else {
     			worker = new RiakBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, log);
     		}
