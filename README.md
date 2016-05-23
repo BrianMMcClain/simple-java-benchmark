@@ -15,3 +15,9 @@ Options
  -t,--threads <THREADS>           Number of worker threads
  -v,--verbose                     Verbose logging
  ```
+
+ Cassandra Create Column Family
+ ------------------------------
+ ```
+DROP KEYSPACE ycsb; CREATE KEYSPACE ycsb WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}; CREATE TABLE ycsb.usertable (time timestamp PRIMARY KEY, family text, series text, field0 text, field1 text);
+ ```
