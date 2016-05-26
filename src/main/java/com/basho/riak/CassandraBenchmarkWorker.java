@@ -4,10 +4,14 @@ package com.basho.riak;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
+
+import org.slf4j.event.Level;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ConsistencyLevel;
@@ -16,13 +20,15 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 
-public class CassandraBenchmarkWorker implements Runnable {
+public class CassandraBenchmarkWorker implements Callable {
 
 	private int id;
 	private String hostname;
 	private String[] hosts;
 	private int recordCount;
 	private int batchSize;
+	
+	private HashMap<Float, Float> results;
 	
 	private Random rand;
 	
@@ -36,6 +42,8 @@ public class CassandraBenchmarkWorker implements Runnable {
 	
 	private Logger log;
 	
+	private final long ONE_SECOND = 1000;
+	
 	public CassandraBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, int rowSize, Logger log) {
 		this.id = id;
 		this.hostname = hostname;
@@ -46,10 +54,12 @@ public class CassandraBenchmarkWorker implements Runnable {
 		this.rowSize = rowSize;
 		this.rand = new Random(System.currentTimeMillis());
 		this.log = log;
+		this.results = new HashMap<Float, Float>();
 	}
 	
-	public void run() {
-		log.config("Started cassandra worker" + this.id + ", writing " + this.recordCount + " records");
+	@Override
+	public HashMap<Float, Float> call() throws Exception {
+		log.fine("Started cassandra worker" + this.id + ", writing " + this.recordCount + " records");
 		
 		// Connect the Cassandra client
 		cluster = Cluster.builder().addContactPoints(hosts).build();
@@ -60,13 +70,28 @@ public class CassandraBenchmarkWorker implements Runnable {
     	session.close();
     	cluster.close();
     	
-    	log.config("worker" + this.id + " completed without error");
+    	log.fine("worker" + this.id + " completed without error");
+		return this.results;
 	}
-	
+
 	private void runBenchmarkLoop() {
 		long timestamp = System.currentTimeMillis();
+		long lastStat = 0;
+		long startTime = System.currentTimeMillis();
+		long nextCheck = System.currentTimeMillis() + ONE_SECOND;
 		int recordsWritten = 0;
 		while (recordsWritten < this.recordCount) {
+			
+			// Check to see if we should record the latest stats
+			if (System.currentTimeMillis() >= nextCheck) {
+				float currentTick = (System.currentTimeMillis() - startTime) / ONE_SECOND; 
+				float throughput = recordsWritten - lastStat;
+				log.fine(currentTick + "," + this.id + "," + throughput);
+				results.put(currentTick, throughput);
+				nextCheck = System.currentTimeMillis() + ONE_SECOND;
+				lastStat = recordsWritten;
+			}
+			
 			Insert insertStatement = generateYCSBStatement(timestamp, this.batchSize);
 			insertStatement.setConsistencyLevel(ConsistencyLevel.ONE);
 			

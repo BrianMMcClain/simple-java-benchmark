@@ -2,12 +2,23 @@ package com.basho.riak;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BinaryOperator;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -27,6 +38,48 @@ public class SimpleJavaBenchmark
     private static int rowSize = 100;
 	
 	private static Logger log = Logger.getLogger("");
+	
+	private static final BinaryOperator<Float> FloatSum = new BinaryOperator<Float>() {
+	    public Float apply(Float f1, Float f2) {
+	        return f1 + f2;
+	    }
+	};
+	
+	private static boolean allFuturesComplete(Set<Future<HashMap<Float, Float>>> set) {
+		Iterator<Future<HashMap<Float, Float>>> i = set.iterator();
+		while (i.hasNext()) {
+			Future<HashMap<Float, Float>> f = i.next();
+			if (!f.isDone()) {
+				return false;
+			}
+		}
+		
+		return true;
+    }
+	
+	private static HashMap<Float, Float> sumResults(Set<Future<HashMap<Float, Float>>> set) {
+		HashMap<Float, Float> results = new HashMap<Float, Float>();
+		Iterator<Future<HashMap<Float, Float>>> i = set.iterator();
+		while (i.hasNext()) {
+			HashMap<Float, Float> entry = null;
+			try {
+				entry = i.next().get();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			// Merge the results
+			for(Map.Entry<Float, Float> e : entry.entrySet()) {
+				results.merge(e.getKey(), e.getValue(), FloatSum);
+			}
+		}
+		
+		return results;
+	}
 	
     public static void main( String[] args )
     {    	    	
@@ -64,8 +117,8 @@ public class SimpleJavaBenchmark
     	// Setup the logger
     	log.getHandlers()[0].setFormatter(new LoggerFormatter());
     	if (line.hasOption('v')) {
-    		log.setLevel(Level.CONFIG);
-    		log.getHandlers()[0].setLevel(Level.CONFIG);
+    		log.setLevel(Level.FINE);
+    		log.getHandlers()[0].setLevel(Level.FINE);
     	} else {
     		log.setLevel(Level.INFO);
     		log.getHandlers()[0].setLevel(Level.INFO);
@@ -94,21 +147,23 @@ public class SimpleJavaBenchmark
 
     	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);
     	log.info("Starting " + workerPoolSize + " threads writing " + (recordCount / workerPoolSize) + " operations");
+    	System.out.println("thread-id,elapsed,throughput");
     	long startTime = System.currentTimeMillis();
+    	Set<Future<HashMap<Float, Float>>> results = new HashSet<Future<HashMap<Float, Float>>>();
     	for (int i = 0; i < workerPoolSize; i++) {
-    		Runnable worker;
+    		Callable<HashMap<Float, Float>> worker;
     		if (cassandraTest) {
     			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, log);
     		} else {
     			worker = new RiakBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, log);
     		}
-    		executor.execute(worker);
+    		Future<HashMap<Float, Float>> result = executor.submit(worker);
+    		results.add(result);
     	}
-    	executor.shutdown();
     	
-    	while(!executor.isTerminated()) {
+    	while(!allFuturesComplete(results)) {
     		try {
-				executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+				Thread.sleep(100);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -117,8 +172,18 @@ public class SimpleJavaBenchmark
     	
     	long endTime = System.currentTimeMillis();
     	
+    	HashMap<Float, Float> summedResults = sumResults(results);
+    	SortedSet<Float> keys = new TreeSet<Float>();
+    	keys.addAll(summedResults.keySet()); 
+    	float sum = 0f;
+    	for (Float k : keys) {
+    		System.out.println(k + ": " + summedResults.get(k));
+    		sum += summedResults.get(k);
+    	}
+    	
     	Long totalTime = endTime - startTime;
-    	float recordsPerSecond = (float) (recordCount / (totalTime / 1000.0));
+    	//float recordsPerSecond = (float) (recordCount / (totalTime / 1000.0));
+    	float recordsPerSecond = sum / keys.size();
     	
     	log.info("Records Written: " + recordCount);
     	log.info("Total Run Time: " + totalTime + " ms");
