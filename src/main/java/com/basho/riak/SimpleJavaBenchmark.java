@@ -7,9 +7,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BinaryOperator;
-import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.HashMap;
@@ -45,6 +43,12 @@ public class SimpleJavaBenchmark
 	    }
 	};
 	
+	/***
+	 * Check that all Futures are completed
+	 *  
+	 * @param set Set of Futures for each worker thread
+	 * @return true if all Futures are complete, otherwise returns false
+	 */
 	private static boolean allFuturesComplete(Set<Future<HashMap<Float, Float>>> set) {
 		Iterator<Future<HashMap<Float, Float>>> i = set.iterator();
 		while (i.hasNext()) {
@@ -57,6 +61,12 @@ public class SimpleJavaBenchmark
 		return true;
     }
 	
+	/***
+	 * Combine all results from each worker thread
+	 * 
+	 * @param set Set of results from each worker thread
+	 * @return Total summed results
+	 */
 	private static HashMap<Float, Float> sumResults(Set<Future<HashMap<Float, Float>>> set) {
 		HashMap<Float, Float> results = new HashMap<Float, Float>();
 		Iterator<Future<HashMap<Float, Float>>> i = set.iterator();
@@ -83,7 +93,7 @@ public class SimpleJavaBenchmark
 	
     public static void main( String[] args )
     {    	    	
-    	// Parse CLI flags
+    	// Setup CLI flag parser
     	CommandLineParser parser = new DefaultParser();
     	Options options = new Options();
 
@@ -98,6 +108,7 @@ public class SimpleJavaBenchmark
     	options.addOption(Option.builder("c").longOpt("cassandra").desc("Run benchmark against Cassandra").build());
     	// TODO Add "help" option
     	
+    	// Parse CLI flags, showing help if needed
     	CommandLine line = null;
     	try {
 			line = parser.parse(options, args);
@@ -145,6 +156,7 @@ public class SimpleJavaBenchmark
         log.info("Row Size: " + rowSize);
     	log.info("Threads: " + workerPoolSize);
 
+    	// Setup and execute all worker threads
     	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);
     	log.info("Starting " + workerPoolSize + " threads writing " + (recordCount / workerPoolSize) + " operations");
     	System.out.println("thread-id,elapsed,throughput");
@@ -161,6 +173,7 @@ public class SimpleJavaBenchmark
     		results.add(result);
     	}
     	
+    	// Wait for all worker threads to complete execution
     	while(!allFuturesComplete(results)) {
     		try {
 				Thread.sleep(100);
@@ -172,6 +185,7 @@ public class SimpleJavaBenchmark
     	
     	long endTime = System.currentTimeMillis();
     	
+    	// Calculate and display second-by-second throughput
     	HashMap<Float, Float> summedResults = sumResults(results);
     	SortedSet<Float> keys = new TreeSet<Float>();
     	keys.addAll(summedResults.keySet()); 

@@ -2,25 +2,18 @@
 
 package com.basho.riak;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
-
-import org.slf4j.event.Level;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ConsistencyLevel;
-import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 
-public class CassandraBenchmarkWorker implements Callable {
+public class CassandraBenchmarkWorker implements Callable<HashMap<Float, Float>> {
 
 	private int id;
 	private String hostname;
