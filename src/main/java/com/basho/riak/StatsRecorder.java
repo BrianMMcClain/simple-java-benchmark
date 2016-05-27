@@ -7,6 +7,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/***
+ * Static, shared class to record stats during benchmark runs
+ * 
+ * @author Brian McClain <bmcclain@basho.com>
+ *
+ */
 public class StatsRecorder {
 
 	private static HashMap<String, HashMap<Long, Float>> stats = new HashMap<String, HashMap<Long, Float>>();
@@ -14,6 +20,11 @@ public class StatsRecorder {
 	
 	private final static long ONE_SECOND = 1000;
 	
+	/***
+	 * Register an ID for stats tracking
+	 * @param id ID to register
+	 * @return False if the ID is already registered, otherwise returns true
+	 */
 	public static boolean registerID(String id) {
 		if (ids.contains(id)) {
 			return false;
@@ -23,16 +34,31 @@ public class StatsRecorder {
 		}
 	}
 	
+	/***
+	 * Record a value at a specific time for a specified ID
+	 * 
+	 * @param id ID for statistic
+	 * @param time Timestamp of recorded value
+	 * @param value Value to record
+	 */
 	public static void recordStat(String id, long time, float value) {
-		stats.getOrDefault(id, new HashMap<Long, Float>()).put(time, value);
-		HashMap<Long, Float> idStats = stats.get(id);
-		if (idStats == null) {
-			idStats = new HashMap<Long, Float>();
+		synchronized(stats) {
+			stats.getOrDefault(id, new HashMap<Long, Float>()).put(time, value);
+			HashMap<Long, Float> idStats = stats.get(id);
+			if (idStats == null) {
+				idStats = new HashMap<Long, Float>();
+			}
+			idStats.put(time, value);
+			stats.put(id, idStats);
 		}
-		idStats.put(time, value);
-		stats.put(id, idStats);
 	}
 	
+	/***
+	 * Returns a map of results from a specific registered ID, grouped per second
+	 * 
+	 * @param id Registered ID to collect stats from
+	 * @return Map of results from provided ID, grouped per second
+	 */
 	public static HashMap<Integer, Float> sumById(String id) {
 		HashMap<Long, Float> idStats = stats.get(id);
 		long startKey = Collections.min(idStats.keySet());
@@ -54,6 +80,11 @@ public class StatsRecorder {
 		return summedResults;
 	}
 	
+	/***
+	 * Sums stats from all IDs, groped by seconds. Useful if the StatsRecorder is used to 
+	 * measure exactly one thing and each ID is measuring the same thing
+	 * @return The summed stats from all IDs, grouped per second
+	 */
 	public static HashMap<Integer, Float> sumAllIds() {
 		HashMap<String, HashMap<Integer, Float>> summedById = new HashMap<String, HashMap<Integer, Float>>();
 		for (String id : ids) {
