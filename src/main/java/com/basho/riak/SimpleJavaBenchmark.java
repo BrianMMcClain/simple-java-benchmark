@@ -1,5 +1,11 @@
 package com.basho.riak;
 
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.concurrent.Callable;
@@ -31,6 +37,7 @@ public class SimpleJavaBenchmark
 	private static int batchSize = 1;
     private static int colCount = 10;
     private static int rowSize = 100;
+    private static String outputPath = null;
 	
 	private static Logger log = Logger.getLogger("");
 
@@ -50,7 +57,28 @@ public class SimpleJavaBenchmark
 		}
 		
 		return true;
-    }
+	}
+	
+	/***
+	 * Wrapper method for writing to a specified file. If no file is specified, write to stdout
+	 * 
+	 * @param writer PrintWriter to use for file writing
+	 * @param line Line to write
+	 */
+	private static void writeLine(BufferedWriter writer, String line) {
+		if (writer == null) {
+			System.out.println(line);
+		} else {
+			try {
+				writer.write(line);
+				writer.newLine();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	
 	
     public static void main( String[] args )
     {    	    	
@@ -59,14 +87,14 @@ public class SimpleJavaBenchmark
     	Options options = new Options();
 
     	options.addOption(Option.builder("h").longOpt("hosts").hasArg().argName("HOST1,HOST2,HOST3").desc("Comma-seperated list of database hosts").required().build());
-    	options.addOption(Option.builder("o").longOpt("ops").hasArg().argName("OPS").desc("Number of operations to perform").required().build());
+    	options.addOption(Option.builder("r").longOpt("records").hasArg().argName("RECORDS").desc("Number of operations to perform").required().build());
     	options.addOption(Option.builder("t").longOpt("threads").hasArg().argName("THREADS").desc("Number of worker threads").required().build());
     	options.addOption(Option.builder("b").longOpt("batch").hasArg().argName("BATCH SIZE").desc("How many rows per operation to be written").required().build());
         options.addOption(Option.builder("n").longOpt("colcount").hasArg().argName("COLUMN COUNT").desc("Number of columns per row (Default: 10)").build());
         options.addOption(Option.builder("s").longOpt("rowsize").hasArg().argName("ROW SIZE").desc("Number of bytes per cell (Default: 100)").build());
     	options.addOption(Option.builder("v").longOpt("verbose").desc("Verbose logging").build());
-    	//options.addOption(Option.builder("r").longOpt("riak").desc("Run benchmark against Riak (default)").build());
     	options.addOption(Option.builder("c").longOpt("cassandra").desc("Run benchmark against Cassandra").build());
+    	options.addOption(Option.builder("o").longOpt("output").hasArg().argName("OUTPUT PATH").desc("Path to write CSV output").build());
     	// TODO Add "help" option
     	
     	// Parse CLI flags, showing help if needed
@@ -79,12 +107,13 @@ public class SimpleJavaBenchmark
 			System.exit(-1);
 		}
     	
-    	hosts = line.getOptionValue("h").split(",");
-    	recordCount = Integer.parseInt(line.getOptionValue("o"));
-    	workerPoolSize = Integer.parseInt(line.getOptionValue("t"));
-    	batchSize = Integer.parseInt(line.getOptionValue("b"));
-        colCount = Integer.parseInt(line.getOptionValue("n"));
-        rowSize = Integer.parseInt(line.getOptionValue("s"));
+    	hosts = line.getOptionValue("h","127.0.0.1").split(",");
+    	recordCount = Integer.parseInt(line.getOptionValue("r", "1000"));
+    	workerPoolSize = Integer.parseInt(line.getOptionValue("t", "1"));
+    	batchSize = Integer.parseInt(line.getOptionValue("b", "1"));
+        colCount = Integer.parseInt(line.getOptionValue("n", "3"));
+        rowSize = Integer.parseInt(line.getOptionValue("s", "10"));
+        outputPath = line.getOptionValue("o", null);
 
     	// Setup the logger
     	log.getHandlers()[0].setFormatter(new LoggerFormatter());
@@ -119,8 +148,7 @@ public class SimpleJavaBenchmark
 
     	// Setup and execute all worker threads
     	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);
-    	log.info("Starting " + workerPoolSize + " threads writing " + (recordCount / workerPoolSize) + " operations");
-    	System.out.println("elapsed,throughput");
+    	log.info("Starting " + workerPoolSize + " threads writing " + (recordCount / workerPoolSize) + " operations each");
     	long startTime = System.currentTimeMillis();
     	Set<Future<HashMap<Float, Float>>> results = new HashSet<Future<HashMap<Float, Float>>>();
     	for (int i = 0; i < workerPoolSize; i++) {
@@ -146,15 +174,43 @@ public class SimpleJavaBenchmark
     	
     	long endTime = System.currentTimeMillis();
     	
+    	// Write output to defined file. If no file is defined, write to stdout
+    	BufferedWriter writer = null;
+    	if (outputPath != null) {
+	    	try {
+				writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath), "UTF-8"));
+			} catch (UnsupportedEncodingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+    	}
+    	
     	HashMap<Integer, Float> summedResults = StatsRecorder.sumAllIds();
     	SortedSet<Integer> keys = new TreeSet<Integer>();
     	keys.addAll(summedResults.keySet()); 
     	float sum = 0f;
+    	
+    	writeLine(writer, "elapsed,throughput");
     	for (int k : keys) {
-    		System.out.println(k + "," + summedResults.get(k));
+    		StringBuilder b = new StringBuilder();
+    		b.append(k).append(",").append(summedResults.get(k));
+    		writeLine(writer, b.toString());
     		sum += summedResults.get(k);
     	}
 
+    	// Flush writer, if we have one
+    	if (writer != null) {
+    		try {
+				writer.flush();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+    	}
+    	
     	Long totalTime = endTime - startTime;
     	float recordsPerSecond = sum / keys.size();
     	
