@@ -3,16 +3,13 @@ package com.basho.riak;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.function.BinaryOperator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.SortedSet;
@@ -36,13 +33,7 @@ public class SimpleJavaBenchmark
     private static int rowSize = 100;
 	
 	private static Logger log = Logger.getLogger("");
-	
-	private static final BinaryOperator<Float> FloatSum = new BinaryOperator<Float>() {
-	    public Float apply(Float f1, Float f2) {
-	        return f1 + f2;
-	    }
-	};
-	
+
 	/***
 	 * Check that all Futures are completed
 	 *  
@@ -60,36 +51,6 @@ public class SimpleJavaBenchmark
 		
 		return true;
     }
-	
-	/***
-	 * Combine all results from each worker thread
-	 * 
-	 * @param set Set of results from each worker thread
-	 * @return Total summed results
-	 */
-	private static HashMap<Float, Float> sumResults(Set<Future<HashMap<Float, Float>>> set) {
-		HashMap<Float, Float> results = new HashMap<Float, Float>();
-		Iterator<Future<HashMap<Float, Float>>> i = set.iterator();
-		while (i.hasNext()) {
-			HashMap<Float, Float> entry = null;
-			try {
-				entry = i.next().get();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (ExecutionException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			
-			// Merge the results
-			for(Map.Entry<Float, Float> e : entry.entrySet()) {
-				results.merge(e.getKey(), e.getValue(), FloatSum);
-			}
-		}
-		
-		return results;
-	}
 	
     public static void main( String[] args )
     {    	    	
@@ -124,7 +85,7 @@ public class SimpleJavaBenchmark
     	batchSize = Integer.parseInt(line.getOptionValue("b"));
         colCount = Integer.parseInt(line.getOptionValue("n"));
         rowSize = Integer.parseInt(line.getOptionValue("s"));
-    	
+
     	// Setup the logger
     	log.getHandlers()[0].setFormatter(new LoggerFormatter());
     	if (line.hasOption('v')) {
@@ -159,7 +120,7 @@ public class SimpleJavaBenchmark
     	// Setup and execute all worker threads
     	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);
     	log.info("Starting " + workerPoolSize + " threads writing " + (recordCount / workerPoolSize) + " operations");
-    	System.out.println("thread-id,elapsed,throughput");
+    	System.out.println("elapsed,throughput");
     	long startTime = System.currentTimeMillis();
     	Set<Future<HashMap<Float, Float>>> results = new HashSet<Future<HashMap<Float, Float>>>();
     	for (int i = 0; i < workerPoolSize; i++) {
@@ -185,21 +146,19 @@ public class SimpleJavaBenchmark
     	
     	long endTime = System.currentTimeMillis();
     	
-    	// Calculate and display second-by-second throughput
-    	HashMap<Float, Float> summedResults = sumResults(results);
-    	SortedSet<Float> keys = new TreeSet<Float>();
+    	HashMap<Integer, Float> summedResults = StatsRecorder.sumAllIds();
+    	SortedSet<Integer> keys = new TreeSet<Integer>();
     	keys.addAll(summedResults.keySet()); 
     	float sum = 0f;
-    	for (Float k : keys) {
-    		System.out.println(k + ": " + summedResults.get(k));
+    	for (int k : keys) {
+    		System.out.println(k + "," + summedResults.get(k));
     		sum += summedResults.get(k);
     	}
-    	
+
     	Long totalTime = endTime - startTime;
-    	//float recordsPerSecond = (float) (recordCount / (totalTime / 1000.0));
     	float recordsPerSecond = sum / keys.size();
     	
-    	log.info("Records Written: " + recordCount);
+    	log.info("Records Written: " + sum);
     	log.info("Total Run Time: " + totalTime + " ms");
     	log.info("Throughput: " + recordsPerSecond + " ops/s");
     	

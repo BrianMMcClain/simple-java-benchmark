@@ -21,6 +21,8 @@ public class CassandraBenchmarkWorker implements Callable<HashMap<Float, Float>>
 	private int recordCount;
 	private int batchSize;
 	
+	private String statsId;
+	
 	private HashMap<Float, Float> results;
 	
 	private Random rand;
@@ -48,6 +50,10 @@ public class CassandraBenchmarkWorker implements Callable<HashMap<Float, Float>>
 		this.rand = new Random(System.currentTimeMillis());
 		this.log = log;
 		this.results = new HashMap<Float, Float>();
+		
+		this.statsId = "worker-" + id;
+		
+		StatsRecorder.registerID(this.statsId);
 	}
 	
 	@Override
@@ -69,21 +75,9 @@ public class CassandraBenchmarkWorker implements Callable<HashMap<Float, Float>>
 
 	private void runBenchmarkLoop() {
 		long timestamp = System.currentTimeMillis();
-		long lastStat = 0;
-		long startTime = System.currentTimeMillis();
-		long nextCheck = System.currentTimeMillis() + ONE_SECOND;
-		int recordsWritten = 0;
+		float recordsWritten = 0;
 		while (recordsWritten < this.recordCount) {
-			
-			// Check to see if we should record the latest stats
-			if (System.currentTimeMillis() >= nextCheck) {
-				float currentTick = (System.currentTimeMillis() - startTime) / ONE_SECOND; 
-				float throughput = recordsWritten - lastStat;
-				log.fine(currentTick + "," + this.id + "," + throughput);
-				results.put(currentTick, throughput);
-				nextCheck = System.currentTimeMillis() + ONE_SECOND;
-				lastStat = recordsWritten;
-			}
+			StatsRecorder.recordStat(this.statsId, System.currentTimeMillis(), recordsWritten);
 			
 			Insert insertStatement = generateYCSBStatement(timestamp, this.batchSize);
 			insertStatement.setConsistencyLevel(ConsistencyLevel.ONE);
