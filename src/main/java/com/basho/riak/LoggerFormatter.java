@@ -1,6 +1,5 @@
 package com.basho.riak;
 
-import java.util.Date;
 import java.util.logging.Formatter;
 import java.util.logging.LogRecord;
 
@@ -10,7 +9,6 @@ public class LoggerFormatter extends Formatter {
 	public String format(LogRecord record) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("[").append(record.getLevel()).append("] ");
-		Date date = new Date(record.getMillis());
 		sb.append(record.getMessage());
 		sb.append(System.lineSeparator());
 		return sb.toString();

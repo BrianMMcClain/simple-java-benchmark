@@ -13,7 +13,8 @@ usage: java -jar simple-java-benchmark
  -c,--cassandra                   Run benchmark against Cassandra
  -h,--hosts <HOST1,HOST2,HOST3>   Comma-seperated list of database hosts
  -n,--colcount <COLUMN COUNT>     Number of columns per row (Default: 10)
- -o,--ops <OPS>                   Number of operations to perform
+ -o,--output <OUTPUT PATH>        Path to write CSV output
+ -r,--records <RECORDS>           Number of operations to perform
  -s,--rowsize <ROW SIZE>          Number of bytes per cell (Default: 100)
  -t,--threads <THREADS>           Number of worker threads
  -v,--verbose                     Verbose logging

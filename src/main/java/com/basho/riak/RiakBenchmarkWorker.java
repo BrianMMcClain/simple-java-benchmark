@@ -2,8 +2,10 @@ package com.basho.riak;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
@@ -14,7 +16,7 @@ import com.basho.riak.client.core.RiakNode;
 import com.basho.riak.client.core.query.timeseries.Cell;
 import com.basho.riak.client.core.query.timeseries.Row;
 
-public class RiakBenchmarkWorker implements Runnable {
+public class RiakBenchmarkWorker implements Callable<HashMap<Float, Float>> {
 
 	private int id;
 	private String hostname;
@@ -42,7 +44,7 @@ public class RiakBenchmarkWorker implements Runnable {
 		this.log = log;
 	}
 	
-	public void run() {
+	public HashMap<Float, Float> call() throws Exception {
 		log.config("Started riak worker" + this.id + ", writing " + this.recordCount + " records");
 		
 		RiakNode.Builder builder = new RiakNode.Builder();
@@ -59,6 +61,7 @@ public class RiakBenchmarkWorker implements Runnable {
     	runBenchmarkLoop();		
     	
     	log.config("worker" + this.id + " completed without error");
+    	return null;
 	}
 	
 	private void runBenchmarkLoop() {
@@ -82,25 +85,25 @@ public class RiakBenchmarkWorker implements Runnable {
     	}
 	}
 
-	private List<Row> generateAllTypeValue(long startTimestamp, int batchSize) {
-		long timestamp = startTimestamp;
-		List<Row> batch = new ArrayList<Row>();
-		
-		for (int i = 0; i < batchSize; i++) {
-			batch.add(new Row(
-					new Cell(this.hostname),
-					new Cell("worker" + this.id), 
-		            Cell.newTimestamp(timestamp), 
-		            new Cell(1), 
-		            new Cell("test"),
-		            new Cell(1.5),
-		            new Cell(true)
-			));
-			timestamp++;
-		}
-		
-		return batch;
-	}
+//	private List<Row> generateAllTypeValue(long startTimestamp, int batchSize) {
+//		long timestamp = startTimestamp;
+//		List<Row> batch = new ArrayList<Row>();
+//		
+//		for (int i = 0; i < batchSize; i++) {
+//			batch.add(new Row(
+//					new Cell(this.hostname),
+//					new Cell("worker" + this.id), 
+//		            Cell.newTimestamp(timestamp), 
+//		            new Cell(1), 
+//		            new Cell("test"),
+//		            new Cell(1.5),
+//		            new Cell(true)
+//			));
+//			timestamp++;
+//		}
+//		
+//		return batch;
+//	}
 
 	private List<Row> generateYCSBValue(long startTimestamp, int batchSize) {
 		long timestamp = startTimestamp;
