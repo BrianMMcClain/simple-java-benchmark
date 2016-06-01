@@ -139,7 +139,10 @@ public class SimpleJavaBenchmark
 			e.printStackTrace();
 		}
 
-    	log.info("Hosts: " + line.getOptionValue("h"));
+    	log.info("Hosts: ");
+    	for (String host : hosts) {
+    		log.info("   " + host);
+    	}
     	log.info("Record Count: " + recordCount);
     	log.info("Batch Size: " + batchSize);
         log.info("Column Count: " + colCount);
