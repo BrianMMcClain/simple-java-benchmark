@@ -36,6 +36,7 @@ public class SimpleJavaBenchmark
 	
 	static final MetricRegistry metrics = new MetricRegistry();
 	static Meter requestsMeter = metrics.meter("requests");
+	static Meter errorsMeter = metrics.meter("errors");
 		
     public static void main( String[] args )
     {
@@ -104,7 +105,7 @@ public class SimpleJavaBenchmark
     	log.info("Record Count: " + recordCount);
     	log.info("Batch Size: " + batchSize);
         log.info("Column Count: " + colCount);
-        log.info("Row Size: " + rowSize);
+        log.info("Cell Size: " + rowSize);
     	log.info("Threads: " + workerPoolSize);
 
     	// Setup the metrics reporter
@@ -127,7 +128,7 @@ public class SimpleJavaBenchmark
     	for (int i = 0; i < workerPoolSize; i++) {
     		Runnable worker;
     		if (cassandraTest) {
-    			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, log, requestsMeter);
+    			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, log, requestsMeter, errorsMeter);
     		} else {
     			worker = new RiakBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, log);
     		}

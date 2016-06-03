@@ -33,8 +33,9 @@ public class CassandraBenchmarkWorker implements Runnable {
 	private Logger log;
 
 	private Meter requests;
+	private Meter errors;
 	
-	public CassandraBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, int rowSize, Logger log, Meter requestsMeter) {
+	public CassandraBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, int rowSize, Logger log, Meter requestsMeter, Meter errorsMeter) {
 		this.id = id;
 		this.hostname = hostname;
 		this.hosts = hosts;
@@ -45,6 +46,7 @@ public class CassandraBenchmarkWorker implements Runnable {
 		this.rand = new Random(System.currentTimeMillis());
 		this.log = log;
 		this.requests = requestsMeter;
+		this.errors = errorsMeter;
 	}
 	
 	@Override
@@ -66,16 +68,15 @@ public class CassandraBenchmarkWorker implements Runnable {
 	private void runBenchmarkLoop() {
 		long timestamp = System.currentTimeMillis();
 		float recordsWritten = 0;
-		while (recordsWritten < this.recordCount) {
-			requests.mark();
-			
+		while (recordsWritten < this.recordCount) {			
 			Insert insertStatement = generateYCSBStatement(timestamp, this.batchSize);
 			insertStatement.setConsistencyLevel(ConsistencyLevel.ONE);
-			
 			try {
 				session.execute(insertStatement);
+				requests.mark();
 			} catch (Exception e) {
-				e.printStackTrace();
+				log.warning(e.getMessage());
+				errors.mark();
 			}
 			
 			timestamp += this.batchSize;

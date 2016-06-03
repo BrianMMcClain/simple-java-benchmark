@@ -19,10 +19,11 @@ public class CustomCsvReporter extends ScheduledReporter {
 
 	private int elapsed = 1;
 	private long lastCount = 0;
+	private long lastErrorCount = 0;
 	
 	private PrintStream stream;
 	
-	private final String CSV_HEADERS = "elapsed,throughput,mean,1m_mean,5m_mean,15m_mean,count,time";
+	private final String CSV_HEADERS = "elapsed,throughput,errors,mean,1m_mean,5m_mean,15m_mean,count,time";
 	
 	protected CustomCsvReporter(MetricRegistry registry, PrintStream stream) {
 		super(registry, "metrics", MetricFilter.ALL, TimeUnit.SECONDS, TimeUnit.MILLISECONDS);
@@ -34,27 +35,28 @@ public class CustomCsvReporter extends ScheduledReporter {
 	@Override
 	public void report(SortedMap<String, Gauge> gauges, SortedMap<String, Counter> counters, SortedMap<String, Histogram> histograms, SortedMap<String, Meter> meters, SortedMap<String, Timer> timers) {
 		if (!meters.isEmpty()) {
-			for (Entry<String, Meter> entry : meters.entrySet()) {
-				Meter m = entry.getValue();
+			Meter requests = meters.get("requests");
+			Meter errors = meters.get("errors");
 				
-				// Determine if we should report this line
-				if ((m.getCount() - lastCount) > 0) {
+			// Determine if we should report this line
+			if ((requests.getCount() - lastCount) > 0 || (errors.getCount() - lastErrorCount) > 0) {
 				
-					StringBuilder out = new StringBuilder();
-					out.append(elapsed).append(",") // Time elapsed
-						.append(m.getCount() - lastCount).append(",") // Throughput of the last window size
-						.append(m.getMeanRate()).append(",") // Runtime Mean
-						.append(m.getOneMinuteRate()).append(",") // 1m Rate
-						.append(m.getFiveMinuteRate()).append(",") // 5m Rate
-						.append(m.getFifteenMinuteRate()).append(",") // 15m Rate
-						.append(m.getCount()).append(",") // Total count
-						.append(System.currentTimeMillis()); // Timestamp, useful for correlation of other metrics
+				StringBuilder out = new StringBuilder();
+				out.append(elapsed).append(",") // Time elapsed
+					.append(requests.getCount() - lastCount).append(",") // Throughput of the last window size
+					.append(errors.getCount() - lastErrorCount).append(",") // Errors
+					.append(requests.getMeanRate()).append(",") // Runtime Mean
+					.append(requests.getOneMinuteRate()).append(",") // 1m Rate
+					.append(requests.getFiveMinuteRate()).append(",") // 5m Rate
+					.append(requests.getFifteenMinuteRate()).append(",") // 15m Rate
+					.append(requests.getCount()).append(",") // Total count
+					.append(System.currentTimeMillis()); // Timestamp, useful for correlation of other metrics
 					
-					this.stream.println(out.toString());
+				this.stream.println(out.toString());
 					
-					lastCount = m.getCount();
-					elapsed++;
-				}
+				lastCount = requests.getCount();
+				lastErrorCount = errors.getCount();
+				elapsed++;
 			}
 		}
 	}
