@@ -128,6 +128,7 @@ public class SimpleJavaBenchmark
     	// Setup and execute all worker threads
     	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);
     	log.info("Starting " + workerPoolSize + " threads writing " + (recordCount / workerPoolSize) + " operations each");
+    	
     	for (int i = 0; i < workerPoolSize; i++) {
     		Runnable worker;
     		if (cassandraTest) {
@@ -148,12 +149,15 @@ public class SimpleJavaBenchmark
 				e.printStackTrace();
 			}
     	}
+    	
+    	long endTime = System.currentTimeMillis();
     	 	
     	reporter.stop();
     	reporter.close();
     	
     	log.info("Records Written: " + requestsMeter.getCount());
     	log.info("Throughput: " + requestsMeter.getMeanRate());
+    	log.info("Total Run Time: " + (endTime - reporter.startTime()) + " ms");
     	
     	System.exit(0);
     }

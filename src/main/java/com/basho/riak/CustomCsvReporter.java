@@ -20,6 +20,8 @@ public class CustomCsvReporter extends ScheduledReporter {
 	private long lastCount = 0;
 	private long lastErrorCount = 0;
 	private long reportInterval = 1;
+	private long startTime = Long.MAX_VALUE;
+	private long endTime = 0;
 	
 	private PrintStream stream;
 	
@@ -37,6 +39,8 @@ public class CustomCsvReporter extends ScheduledReporter {
 		if (!meters.isEmpty()) {
 			Meter requests = meters.get("requests");
 			Meter errors = meters.get("errors");
+			
+			long time = System.currentTimeMillis();
 				
 			// Determine if we should report this line
 			if ((requests.getCount() - lastCount) > 0 || (errors.getCount() - lastErrorCount) > 0) {
@@ -50,13 +54,19 @@ public class CustomCsvReporter extends ScheduledReporter {
 					.append(requests.getFiveMinuteRate()).append(",") // 5m Rate
 					.append(requests.getFifteenMinuteRate()).append(",") // 15m Rate
 					.append(requests.getCount()).append(",") // Total count
-					.append(System.currentTimeMillis()); // Timestamp, useful for correlation of other metrics
+					.append(time); // Timestamp, useful for correlation of other metrics
 					
 				this.stream.println(out.toString());
 					
 				lastCount = requests.getCount();
 				lastErrorCount = errors.getCount();
 				elapsed += reportInterval;
+				
+				if (time < startTime) {
+					startTime = time;
+				} else if (time > endTime) {
+					endTime = time;
+				}
 			}
 		}
 	}
@@ -72,6 +82,14 @@ public class CustomCsvReporter extends ScheduledReporter {
 	public void close() {
 		this.stream.flush();
 		this.stream.close();
+	}
+	
+	public long startTime() {
+		return startTime;
+	}
+	
+	public long endTime() {
+		return endTime;
 	}
 	
 }
