@@ -30,8 +30,9 @@ public class SimpleJavaBenchmark
 	private static int batchSize = 1;
     private static int colCount = 10;
     private static int rowSize = 100;
-    private static String outputPath = null;
-	
+    private static int reportInterval = 1;
+    private static String outputPath = null; 
+    
 	private static Logger log = Logger.getLogger("");
 	
 	static final MetricRegistry metrics = new MetricRegistry();
@@ -54,6 +55,7 @@ public class SimpleJavaBenchmark
     	options.addOption(Option.builder("c").longOpt("cassandra").desc("Run benchmark against Cassandra").build());
     	options.addOption(Option.builder("o").longOpt("output").hasArg().argName("OUTPUT PATH").desc("Path to write CSV output").build());
     	options.addOption(Option.builder("a").longOpt("table").hasArg().argName("TABLE NAME").desc("Bucket/Column Family").build());
+    	options.addOption(Option.builder("i").longOpt("interval").hasArg().argName("REPORT INTERVAL").desc("CSV Report Interval").build());
     	// TODO Add "help" option
     	
     	// Parse CLI flags, showing help if needed
@@ -73,6 +75,7 @@ public class SimpleJavaBenchmark
         colCount = Integer.parseInt(line.getOptionValue("n", "3"));
         rowSize = Integer.parseInt(line.getOptionValue("s", "10"));
         outputPath = line.getOptionValue("o", null);
+        reportInterval = Integer.parseInt(line.getOptionValue("i", "1"));
 
     	// Setup the logger
     	log.getHandlers()[0].setFormatter(new LoggerFormatter());
@@ -120,7 +123,7 @@ public class SimpleJavaBenchmark
     	}
     	
     	CustomCsvReporter reporter = new CustomCsvReporter(metrics, stream);
- 		reporter.start(1, TimeUnit.SECONDS);
+ 		reporter.start(reportInterval, TimeUnit.SECONDS);
     	
     	// Setup and execute all worker threads
     	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);

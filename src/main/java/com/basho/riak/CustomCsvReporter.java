@@ -2,7 +2,6 @@ package com.basho.riak;
 
 import java.io.PrintStream;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import com.codahale.metrics.Counter;
@@ -17,13 +16,14 @@ import com.codahale.metrics.Timer;
 
 public class CustomCsvReporter extends ScheduledReporter {
 
-	private int elapsed = 1;
+	private long elapsed = 1;
 	private long lastCount = 0;
 	private long lastErrorCount = 0;
+	private long reportInterval = 1;
 	
 	private PrintStream stream;
 	
-	private final String CSV_HEADERS = "elapsed,throughput,errors,mean,1m_mean,5m_mean,15m_mean,count,time";
+	private final String CSV_HEADERS = "elapsed,ops_per_sec,errors_per_sec,mean,1m_mean,5m_mean,15m_mean,count,time";
 	
 	protected CustomCsvReporter(MetricRegistry registry, PrintStream stream) {
 		super(registry, "metrics", MetricFilter.ALL, TimeUnit.SECONDS, TimeUnit.MILLISECONDS);
@@ -43,8 +43,8 @@ public class CustomCsvReporter extends ScheduledReporter {
 				
 				StringBuilder out = new StringBuilder();
 				out.append(elapsed).append(",") // Time elapsed
-					.append(requests.getCount() - lastCount).append(",") // Throughput of the last window size
-					.append(errors.getCount() - lastErrorCount).append(",") // Errors
+					.append((requests.getCount() - lastCount) / reportInterval).append(",") // Throughput of the last window size
+					.append((errors.getCount() - lastErrorCount) / reportInterval).append(",") // Errors
 					.append(requests.getMeanRate()).append(",") // Runtime Mean
 					.append(requests.getOneMinuteRate()).append(",") // 1m Rate
 					.append(requests.getFiveMinuteRate()).append(",") // 5m Rate
@@ -56,9 +56,16 @@ public class CustomCsvReporter extends ScheduledReporter {
 					
 				lastCount = requests.getCount();
 				lastErrorCount = errors.getCount();
-				elapsed++;
+				elapsed += reportInterval;
 			}
 		}
+	}
+	
+	@Override
+	public void start(long period, TimeUnit unit) {
+		elapsed = period;
+		reportInterval = period;
+		super.start(period, unit);
 	}
 	
 	@Override

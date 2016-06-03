@@ -8,16 +8,18 @@ Options
 -------
 ```
 usage: java -jar simple-java-benchmark
- -b,--batch <BATCH SIZE>          How many rows per operation to be
-                                  written
- -c,--cassandra                   Run benchmark against Cassandra
- -h,--hosts <HOST1,HOST2,HOST3>   Comma-seperated list of database hosts
- -n,--colcount <COLUMN COUNT>     Number of columns per row (Default: 10)
- -o,--output <OUTPUT PATH>        Path to write CSV output
- -r,--records <RECORDS>           Number of operations to perform
- -s,--rowsize <ROW SIZE>          Number of bytes per cell (Default: 100)
- -t,--threads <THREADS>           Number of worker threads
- -v,--verbose                     Verbose logging
+ -a,--table <TABLE NAME>           Bucket/Column Family
+ -b,--batch <BATCH SIZE>           How many rows per operation to be
+                                   written
+ -c,--cassandra                    Run benchmark against Cassandra
+ -h,--hosts <HOST1,HOST2,HOST3>    Comma-seperated list of database hosts
+ -i,--interval <REPORT INTERVAL>   CSV Report Interval
+ -n,--colcount <COLUMN COUNT>      Number of columns per row (Default: 10)
+ -o,--output <OUTPUT PATH>         Path to write CSV output
+ -r,--records <RECORDS>            Number of operations to perform
+ -s,--rowsize <ROW SIZE>           Number of bytes per cell (Default: 100)
+ -t,--threads <THREADS>            Number of worker threads
+ -v,--verbose                      Verbose logging
  ```
 
  Cassandra Create Column Family
