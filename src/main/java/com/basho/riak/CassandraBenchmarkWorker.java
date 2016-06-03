@@ -6,6 +6,7 @@ import java.util.Random;
 import java.util.logging.Logger;
 
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.Session;
@@ -34,8 +35,9 @@ public class CassandraBenchmarkWorker implements Runnable {
 
 	private Meter requests;
 	private Meter errors;
+	private Timer latency;
 	
-	public CassandraBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, int rowSize, Logger log, Meter requestsMeter, Meter errorsMeter) {
+	public CassandraBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, int rowSize, Logger log, Meter requestsMeter, Meter errorsMeter, Timer latencyMeter) {
 		this.id = id;
 		this.hostname = hostname;
 		this.hosts = hosts;
@@ -47,6 +49,7 @@ public class CassandraBenchmarkWorker implements Runnable {
 		this.log = log;
 		this.requests = requestsMeter;
 		this.errors = errorsMeter;
+		this.latency = latencyMeter;
 	}
 	
 	@Override
@@ -72,8 +75,10 @@ public class CassandraBenchmarkWorker implements Runnable {
 			Insert insertStatement = generateYCSBStatement(timestamp, this.batchSize);
 			insertStatement.setConsistencyLevel(ConsistencyLevel.ONE);
 			try {
+				Timer.Context context = latency.time();
 				session.execute(insertStatement);
 				requests.mark();
+				context.stop();
 			} catch (Exception e) {
 				log.warning(e.getMessage());
 				errors.mark();

@@ -21,6 +21,7 @@ import org.apache.commons.cli.ParseException;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 
 public class SimpleJavaBenchmark 
 {
@@ -38,6 +39,7 @@ public class SimpleJavaBenchmark
 	static final MetricRegistry metrics = new MetricRegistry();
 	static Meter requestsMeter = metrics.meter("requests");
 	static Meter errorsMeter = metrics.meter("errors");
+	static Timer latencyTimer = metrics.timer("latency");
 		
     public static void main( String[] args )
     {
@@ -132,7 +134,7 @@ public class SimpleJavaBenchmark
     	for (int i = 0; i < workerPoolSize; i++) {
     		Runnable worker;
     		if (cassandraTest) {
-    			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, log, requestsMeter, errorsMeter);
+    			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, log, requestsMeter, errorsMeter, latencyTimer);
     		} else {
     			worker = new RiakBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, log);
     		}
