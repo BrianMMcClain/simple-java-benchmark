@@ -25,7 +25,7 @@ public class CustomCsvReporter extends ScheduledReporter {
 	
 	private PrintStream stream;
 	
-	private final String CSV_HEADERS = "elapsed,ops_per_sec,errors_per_sec,mean,1m_mean,5m_mean,15m_mean,count,time";
+	private final String CSV_HEADERS = "elapsed,ops_per_sec,errors_per_sec,mean,1m_mean,5m_mean,15m_mean,total,time";
 	
 	protected CustomCsvReporter(MetricRegistry registry, PrintStream stream) {
 		super(registry, "metrics", MetricFilter.ALL, TimeUnit.SECONDS, TimeUnit.MILLISECONDS);
