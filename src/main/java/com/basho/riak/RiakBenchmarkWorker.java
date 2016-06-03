@@ -2,10 +2,8 @@ package com.basho.riak;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
@@ -16,7 +14,7 @@ import com.basho.riak.client.core.RiakNode;
 import com.basho.riak.client.core.query.timeseries.Cell;
 import com.basho.riak.client.core.query.timeseries.Row;
 
-public class RiakBenchmarkWorker implements Callable<HashMap<Float, Float>> {
+public class RiakBenchmarkWorker implements Runnable {
 
 	private int id;
 	private String hostname;
@@ -44,7 +42,7 @@ public class RiakBenchmarkWorker implements Callable<HashMap<Float, Float>> {
 		this.log = log;
 	}
 	
-	public HashMap<Float, Float> call() throws Exception {
+	public void run() {
 		log.config("Started riak worker" + this.id + ", writing " + this.recordCount + " records");
 		
 		RiakNode.Builder builder = new RiakNode.Builder();
@@ -61,7 +59,6 @@ public class RiakBenchmarkWorker implements Callable<HashMap<Float, Float>> {
     	runBenchmarkLoop();		
     	
     	log.config("worker" + this.id + " completed without error");
-    	return null;
 	}
 	
 	private void runBenchmarkLoop() {

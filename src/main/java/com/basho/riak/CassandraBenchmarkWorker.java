@@ -2,28 +2,23 @@
 
 package com.basho.riak;
 
-import java.util.HashMap;
 import java.util.Random;
-import java.util.concurrent.Callable;
 import java.util.logging.Logger;
 
+import com.codahale.metrics.Meter;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 
-public class CassandraBenchmarkWorker implements Callable<HashMap<Float, Float>> {
+public class CassandraBenchmarkWorker implements Runnable {
 
 	private int id;
 	private String hostname;
 	private String[] hosts;
 	private int recordCount;
 	private int batchSize;
-	
-	private String statsId;
-	
-	private HashMap<Float, Float> results;
 	
 	private Random rand;
 	
@@ -36,10 +31,10 @@ public class CassandraBenchmarkWorker implements Callable<HashMap<Float, Float>>
 	private Session session;
 	
 	private Logger log;
+
+	private Meter requests;
 	
-	private final long ONE_SECOND = 1000;
-	
-	public CassandraBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, int rowSize, Logger log) {
+	public CassandraBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, int rowSize, Logger log, Meter requestsMeter) {
 		this.id = id;
 		this.hostname = hostname;
 		this.hosts = hosts;
@@ -49,15 +44,11 @@ public class CassandraBenchmarkWorker implements Callable<HashMap<Float, Float>>
 		this.rowSize = rowSize;
 		this.rand = new Random(System.currentTimeMillis());
 		this.log = log;
-		this.results = new HashMap<Float, Float>();
-		
-		this.statsId = "worker-" + id;
-		
-		StatsRecorder.registerID(this.statsId);
+		this.requests = requestsMeter;
 	}
 	
 	@Override
-	public HashMap<Float, Float> call() throws Exception {
+	public void run() {
 		log.fine("Started cassandra worker" + this.id + ", writing " + this.recordCount + " records");
 		
 		// Connect the Cassandra client
@@ -70,14 +61,13 @@ public class CassandraBenchmarkWorker implements Callable<HashMap<Float, Float>>
     	cluster.close();
     	
     	log.fine("worker" + this.id + " completed without error");
-		return this.results;
 	}
 
 	private void runBenchmarkLoop() {
 		long timestamp = System.currentTimeMillis();
 		float recordsWritten = 0;
 		while (recordsWritten < this.recordCount) {
-			StatsRecorder.recordStat(this.statsId, System.currentTimeMillis(), recordsWritten);
+			requests.mark();
 			
 			Insert insertStatement = generateYCSBStatement(timestamp, this.batchSize);
 			insertStatement.setConsistencyLevel(ConsistencyLevel.ONE);

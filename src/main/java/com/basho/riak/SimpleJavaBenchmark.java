@@ -1,25 +1,15 @@
 package com.basho.riak;
 
-import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.UnsupportedEncodingException;
+import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -28,6 +18,9 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 
 public class SimpleJavaBenchmark 
 {
@@ -40,50 +33,14 @@ public class SimpleJavaBenchmark
     private static String outputPath = null;
 	
 	private static Logger log = Logger.getLogger("");
-
-	/***
-	 * Check that all Futures are completed
-	 *  
-	 * @param set Set of Futures for each worker thread
-	 * @return true if all Futures are complete, otherwise returns false
-	 */
-	private static boolean allFuturesComplete(Set<Future<HashMap<Float, Float>>> set) {
-		Iterator<Future<HashMap<Float, Float>>> i = set.iterator();
-		while (i.hasNext()) {
-			Future<HashMap<Float, Float>> f = i.next();
-			if (!f.isDone()) {
-				return false;
-			}
-		}
+	
+	static final MetricRegistry metrics = new MetricRegistry();
+	static Meter requestsMeter = metrics.meter("requests");
 		
-		return true;
-	}
-	
-	/***
-	 * Wrapper method for writing to a specified file. If no file is specified, write to stdout
-	 * 
-	 * @param writer PrintWriter to use for file writing
-	 * @param line Line to write
-	 */
-	private static void writeLine(BufferedWriter writer, String line) {
-		if (writer == null) {
-			System.out.println(line);
-		} else {
-			try {
-				writer.write(line);
-				writer.newLine();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
-	
-	
     public static void main( String[] args )
-    {    	    	
+    {
     	// Setup CLI flag parser
-    	CommandLineParser parser = new DefaultParser();
+     	CommandLineParser parser = new DefaultParser();
     	Options options = new Options();
 
     	options.addOption(Option.builder("h").longOpt("hosts").hasArg().argName("HOST1,HOST2,HOST3").desc("Comma-seperated list of database hosts").required().build());
@@ -95,6 +52,7 @@ public class SimpleJavaBenchmark
     	options.addOption(Option.builder("v").longOpt("verbose").desc("Verbose logging").build());
     	options.addOption(Option.builder("c").longOpt("cassandra").desc("Run benchmark against Cassandra").build());
     	options.addOption(Option.builder("o").longOpt("output").hasArg().argName("OUTPUT PATH").desc("Path to write CSV output").build());
+    	options.addOption(Option.builder("a").longOpt("table").hasArg().argName("TABLE NAME").desc("Bucket/Column Family").build());
     	// TODO Add "help" option
     	
     	// Parse CLI flags, showing help if needed
@@ -149,77 +107,49 @@ public class SimpleJavaBenchmark
         log.info("Row Size: " + rowSize);
     	log.info("Threads: " + workerPoolSize);
 
-    	// Setup and execute all worker threads
-    	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);
-    	log.info("Starting " + workerPoolSize + " threads writing " + (recordCount / workerPoolSize) + " operations each");
-    	long startTime = System.currentTimeMillis();
-    	Set<Future<HashMap<Float, Float>>> results = new HashSet<Future<HashMap<Float, Float>>>();
-    	for (int i = 0; i < workerPoolSize; i++) {
-    		Callable<HashMap<Float, Float>> worker;
-    		if (cassandraTest) {
-    			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, log);
-    		} else {
-    			worker = new RiakBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, log);
-    		}
-    		Future<HashMap<Float, Float>> result = executor.submit(worker);
-    		results.add(result);
-    	}
-    	
-    	// Wait for all worker threads to complete execution
-    	while(!allFuturesComplete(results)) {
-    		try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-    	}
-    	
-    	long endTime = System.currentTimeMillis();
-    	
-    	// Write output to defined file. If no file is defined, write to stdout
-    	BufferedWriter writer = null;
+    	// Setup the metrics reporter
+    	PrintStream stream = System.out;
     	if (outputPath != null) {
-	    	try {
-				writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath), "UTF-8"));
-			} catch (UnsupportedEncodingException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+    		try {
+				stream = new PrintStream(new File(outputPath));
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
     	}
     	
-    	HashMap<Integer, Float> summedResults = StatsRecorder.sumAllIds();
-    	SortedSet<Integer> keys = new TreeSet<Integer>();
-    	keys.addAll(summedResults.keySet()); 
-    	float sum = 0f;
+    	CustomCsvReporter reporter = new CustomCsvReporter(metrics, stream);
+ 		reporter.start(1, TimeUnit.SECONDS);
     	
-    	writeLine(writer, "elapsed,throughput");
-    	for (int k : keys) {
-    		StringBuilder b = new StringBuilder();
-    		b.append(k).append(",").append(summedResults.get(k));
-    		writeLine(writer, b.toString());
-    		sum += summedResults.get(k);
+    	// Setup and execute all worker threads
+    	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);
+    	log.info("Starting " + workerPoolSize + " threads writing " + (recordCount / workerPoolSize) + " operations each");
+    	for (int i = 0; i < workerPoolSize; i++) {
+    		Runnable worker;
+    		if (cassandraTest) {
+    			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, log, requestsMeter);
+    		} else {
+    			worker = new RiakBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, log);
+    		}
+    		executor.submit(worker);
     	}
-
-    	// Flush writer, if we have one
-    	if (writer != null) {
+    	
+    	// Wait for all worker threads to complete execution
+    	executor.shutdown();
+    	while(!executor.isTerminated()) {
     		try {
-				writer.flush();
-			} catch (IOException e) {
+				executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
     	}
+    	 	
+    	reporter.stop();
+    	reporter.close();
     	
-    	Long totalTime = endTime - startTime;
-    	float recordsPerSecond = sum / keys.size();
-    	
-    	log.info("Records Written: " + sum);
-    	log.info("Total Run Time: " + totalTime + " ms");
-    	log.info("Throughput: " + recordsPerSecond + " ops/s");
+    	log.info("Records Written: " + requestsMeter.getCount());
+    	log.info("Throughput: " + requestsMeter.getMeanRate());
     	
     	System.exit(0);
     }
