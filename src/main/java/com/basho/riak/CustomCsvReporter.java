@@ -91,6 +91,7 @@ public class CustomCsvReporter extends ScheduledReporter {
 	public void close() {
 		this.stream.flush();
 		this.stream.close();
+		super.close();
 	}
 	
 	public long startTime() {
