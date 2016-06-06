@@ -13,6 +13,8 @@ import com.basho.riak.client.core.RiakCluster;
 import com.basho.riak.client.core.RiakNode;
 import com.basho.riak.client.core.query.timeseries.Cell;
 import com.basho.riak.client.core.query.timeseries.Row;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
 
 public class RiakBenchmarkWorker implements Runnable {
 
@@ -25,21 +27,30 @@ public class RiakBenchmarkWorker implements Runnable {
 	private Random rand;
 	
 	private final String BUCKET_NAME = "tsycsb";
-	private final int YCSB_ROW_COUNT = 10;
-	private final int YCSB_ROW_SIZE = 100;
+	private int colCount = 10;
+	private int rowSize = 100;
 
 	private RiakClient client;
 	
 	private Logger log;
+
+	private Meter requests;
+	private Meter errors;
+	private Timer latency;
 	
-	public RiakBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, Logger log) {
+	public RiakBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, int rowSize, Logger log, Meter requestsMeter, Meter errorsMeter, Timer latencyMeter) {
 		this.id = id;
 		this.hostname = hostname;
 		this.hosts = hosts;
 		this.recordCount = recordCount;
 		this.batchSize = batchSize;
+		this.colCount = colCount;
+		this.rowSize = rowSize;
 		this.rand = new Random(System.currentTimeMillis());
 		this.log = log;
+		this.requests = requestsMeter;
+		this.errors = errorsMeter;
+		this.latency = latencyMeter;
 	}
 	
 	public void run() {
@@ -68,14 +79,14 @@ public class RiakBenchmarkWorker implements Runnable {
 	    	List<Row> rows = generateYCSBValue(timestamp, this.batchSize);
 	    	Store storeCmd = new Store.Builder(BUCKET_NAME).withRows(rows).build();
 			try {
+				Timer.Context context = latency.time();
 				this.client.execute(storeCmd);
-			} catch (ExecutionException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+				context.stop();
+				requests.mark();
+			} catch (Exception e) {
+				log.warning(e.getMessage());
+				errors.mark();
+			} 
 			
 			timestamp += this.batchSize;
 			recordsWritten += 1;
@@ -106,14 +117,14 @@ public class RiakBenchmarkWorker implements Runnable {
 		long timestamp = startTimestamp;
 		List<Row> batch = new ArrayList<Row>();
 		
-		byte buffer [] = new byte[YCSB_ROW_SIZE];
+		byte buffer [] = new byte[this.rowSize];
 		
 		for (int i = 0; i < batchSize; i++) {
 			List<Cell> cells = new ArrayList<Cell>();
 			cells.add(new Cell(this.hostname));
 			cells.add(new Cell("worker" + this.id));
 			cells.add(Cell.newTimestamp(timestamp));
-			for (int j = 0; j < YCSB_ROW_COUNT; j++) {
+			for (int j = 0; j < this.colCount; j++) {
 				rand.nextBytes(buffer);
 				cells.add(new Cell(new String(buffer)));
 			}

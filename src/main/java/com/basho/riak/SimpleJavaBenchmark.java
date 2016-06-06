@@ -136,7 +136,7 @@ public class SimpleJavaBenchmark
     		if (cassandraTest) {
     			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, log, requestsMeter, errorsMeter, latencyTimer);
     		} else {
-    			worker = new RiakBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, log);
+    			worker = new RiakBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, log, requestsMeter, errorsMeter, latencyTimer);
     		}
     		executor.submit(worker);
     	}
