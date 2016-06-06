@@ -26,7 +26,7 @@ public class CustomCsvReporter extends ScheduledReporter {
 	
 	private PrintStream stream;
 	
-	private final String CSV_HEADERS = "elapsed,ops_per_sec,errors_per_sec,mean,1m_mean,5m_mean,15m_mean,min_latency,max_latency,mean_latency,total,time";
+	private final String CSV_HEADERS = "elapsed,ops_per_sec,errors_per_sec,mean,1m_mean,5m_mean,15m_mean,min_latency,max_latency,mean_latency,total_ops,total_errors,time";
 	
 	private final float NS_IN_MS = 1000000;
 	
@@ -61,7 +61,8 @@ public class CustomCsvReporter extends ScheduledReporter {
 					.append((float) snapshot.getMin() / NS_IN_MS).append(",") // Min Latency
 					.append((float) snapshot.getMax() / NS_IN_MS).append(",") // Max Latency
 					.append((float) snapshot.getMean() / NS_IN_MS).append(",") // Mean Latency
-					.append(requests.getCount()).append(",") // Total count
+					.append(requests.getCount()).append(",") // Total ops count
+					.append(errors.getCount()).append(",") // Total error count
 					.append(time); // Timestamp, useful for correlation of other metrics
 					
 				this.stream.println(out.toString());
