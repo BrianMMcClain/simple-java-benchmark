@@ -2,7 +2,7 @@
 
 SIZE="${1:-10}"
 COUNT=0
-CMD="./riak-admin bucket-type create tsycsb '{\"props\": {\"n_val\": 1, \"table_def\": \"CREATE TABLE tsycsb (
+CMD="./riak-admin bucket-type create tsycsb '{\"props\": {\"table_def\": \"CREATE TABLE tsycsb (
 		host VARCHAR NOT NULL, 
 		worker VARCHAR NOT NULL, 
 		time TIMESTAMP NOT NULL"
