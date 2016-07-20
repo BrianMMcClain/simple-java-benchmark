@@ -33,6 +33,8 @@ public class SimpleJavaBenchmark
     private static int rowSize = 100;
     private static int reportInterval = 1;
     private static String outputPath = null; 
+    private static int queryRange = -1;
+    private static int queryLimit = 1;
     
 	private static Logger log = Logger.getLogger("");
 	
@@ -49,8 +51,8 @@ public class SimpleJavaBenchmark
 
     	options.addOption(Option.builder("h").longOpt("hosts").hasArg().argName("HOST1,HOST2,HOST3").desc("Comma-seperated list of database hosts").required().build());
     	options.addOption(Option.builder("r").longOpt("records").hasArg().argName("RECORDS").desc("Number of operations to perform").required().build());
-    	options.addOption(Option.builder("t").longOpt("threads").hasArg().argName("THREADS").desc("Number of worker threads").required().build());
-    	options.addOption(Option.builder("b").longOpt("batch").hasArg().argName("BATCH SIZE").desc("How many rows per operation to be written").required().build());
+    	options.addOption(Option.builder("t").longOpt("threads").hasArg().argName("THREADS").desc("Number of worker threads").build());
+    	options.addOption(Option.builder("b").longOpt("batch").hasArg().argName("BATCH SIZE").desc("How many rows per operation to be written").build());
         options.addOption(Option.builder("n").longOpt("colcount").hasArg().argName("COLUMN COUNT").desc("Number of columns per row (Default: 10)").build());
         options.addOption(Option.builder("s").longOpt("rowsize").hasArg().argName("ROW SIZE").desc("Number of bytes per cell (Default: 100)").build());
     	options.addOption(Option.builder("v").longOpt("verbose").desc("Verbose logging").build());
@@ -58,6 +60,8 @@ public class SimpleJavaBenchmark
     	options.addOption(Option.builder("o").longOpt("output").hasArg().argName("OUTPUT PATH").desc("Path to write CSV output").build());
     	options.addOption(Option.builder("a").longOpt("table").hasArg().argName("TABLE NAME").desc("Bucket/Column Family").build());
     	options.addOption(Option.builder("i").longOpt("interval").hasArg().argName("REPORT INTERVAL").desc("CSV Report Interval").build());
+    	options.addOption(Option.builder("q").longOpt("query").hasArg().argName("QUERY RANGE").desc("Perform query test").build());
+    	options.addOption(Option.builder("l").longOpt("limit").hasArg().argName("QUERY LIMIT").desc("Query limit").build());
     	// TODO Add "help" option
     	
     	// Parse CLI flags, showing help if needed
@@ -78,6 +82,8 @@ public class SimpleJavaBenchmark
         rowSize = Integer.parseInt(line.getOptionValue("s", "10"));
         outputPath = line.getOptionValue("o", null);
         reportInterval = Integer.parseInt(line.getOptionValue("i", "1"));
+        queryRange = Integer.parseInt(line.getOptionValue("q", "-1"));
+        queryLimit = Integer.parseInt(line.getOptionValue("l", "1000"));
 
     	// Setup the logger
     	log.getHandlers()[0].setFormatter(new LoggerFormatter());
@@ -112,6 +118,10 @@ public class SimpleJavaBenchmark
         log.info("Column Count: " + colCount);
         log.info("Cell Size: " + rowSize);
     	log.info("Threads: " + workerPoolSize);
+    	if (queryRange > 0)
+    	{
+    		log.info("Query Range: " + queryRange);
+    	}
 
     	// Setup the metrics reporter
     	PrintStream stream = System.out;
@@ -134,9 +144,9 @@ public class SimpleJavaBenchmark
     	for (int i = 0; i < workerPoolSize; i++) {
     		Runnable worker;
     		if (cassandraTest) {
-    			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, log, requestsMeter, errorsMeter, latencyTimer);
+    			worker = new CassandraBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, queryRange, queryLimit, log, requestsMeter, errorsMeter, latencyTimer);
     		} else {
-    			worker = new RiakBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, log, requestsMeter, errorsMeter, latencyTimer);
+    			worker = new RiakBenchmarkWorker(i, hostname, hosts, recordCount / workerPoolSize, batchSize, colCount, rowSize, queryRange, queryLimit, log, requestsMeter, errorsMeter, latencyTimer);
     		}
     		executor.submit(worker);
     	}

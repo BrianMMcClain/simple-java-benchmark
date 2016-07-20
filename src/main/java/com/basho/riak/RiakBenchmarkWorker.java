@@ -8,15 +8,24 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.commands.timeseries.Query;
 import com.basho.riak.client.api.commands.timeseries.Store;
 import com.basho.riak.client.core.RiakCluster;
 import com.basho.riak.client.core.RiakNode;
 import com.basho.riak.client.core.query.timeseries.Cell;
 import com.basho.riak.client.core.query.timeseries.Row;
+import com.basho.riak.client.api.commands.timeseries.Delete;
+import com.basho.riak.client.api.commands.timeseries.Fetch;
+import com.basho.riak.client.api.commands.timeseries.Query;
+import com.basho.riak.client.api.commands.timeseries.Store;
+import com.basho.riak.client.core.query.timeseries.Cell;
+import com.basho.riak.client.core.query.timeseries.ColumnDescription;
+import com.basho.riak.client.core.query.timeseries.QueryResult;
+import com.basho.riak.client.core.query.timeseries.Row;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 
-public class RiakBenchmarkWorker implements Runnable {
+public class RiakBenchmarkWorker<QueryResult> implements Runnable {
 
 	private int id;
 	private String hostname;
@@ -29,6 +38,8 @@ public class RiakBenchmarkWorker implements Runnable {
 	private final String BUCKET_NAME = "tsycsb";
 	private int colCount = 10;
 	private int rowSize = 100;
+	private int queryRange = -1;
+	private int queryLimit = 100;
 
 	private RiakClient client;
 	
@@ -38,7 +49,7 @@ public class RiakBenchmarkWorker implements Runnable {
 	private Meter errors;
 	private Timer latency;
 	
-	public RiakBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, int rowSize, Logger log, Meter requestsMeter, Meter errorsMeter, Timer latencyMeter) {
+	public RiakBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, int rowSize, int queryRange, int queryLimit, Logger log, Meter requestsMeter, Meter errorsMeter, Timer latencyMeter) {
 		this.id = id;
 		this.hostname = hostname;
 		this.hosts = hosts;
@@ -46,6 +57,8 @@ public class RiakBenchmarkWorker implements Runnable {
 		this.batchSize = batchSize;
 		this.colCount = colCount;
 		this.rowSize = rowSize;
+		this.queryRange = queryRange;
+		this.queryLimit = queryLimit;
 		this.rand = new Random(System.currentTimeMillis());
 		this.log = log;
 		this.requests = requestsMeter;
@@ -67,13 +80,17 @@ public class RiakBenchmarkWorker implements Runnable {
     		e.printStackTrace();
     	}
     	
-    	runBenchmarkLoop();		
+    	if (queryRange > 0) {
+    		runQueryBenchmarkLoop();
+    	} else {
+    		runBenchmarkLoop();
+    	}
     	
     	log.config("worker" + this.id + " completed without error");
 	}
 	
 	private void runBenchmarkLoop() {
-		long timestamp = System.currentTimeMillis();
+		long timestamp = 1;
 		int recordsWritten = 0;
 		while (recordsWritten < this.recordCount) {
 	    	List<Row> rows = generateYCSBValue(timestamp, this.batchSize);
@@ -91,6 +108,27 @@ public class RiakBenchmarkWorker implements Runnable {
 			timestamp += this.batchSize;
 			recordsWritten += 1;
     	}
+	}
+	
+	private void runQueryBenchmarkLoop() {
+		int queriesIssues = 0;
+		while (queriesIssues < this.queryLimit) {
+			String queryString = generateYCSBQuery(1, this.recordCount, this.queryRange);
+			Query query = new Query.Builder(queryString).build();
+			try {
+				Timer.Context context = latency.time();
+				com.basho.riak.client.core.query.timeseries.QueryResult queryResult = client.execute(query);
+				context.stop();
+				requests.mark();
+			} catch (ExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			queriesIssues++;
+		}
 	}
 
 //	private List<Row> generateAllTypeValue(long startTimestamp, int batchSize) {
@@ -133,5 +171,25 @@ public class RiakBenchmarkWorker implements Runnable {
 		}
 		
 		return batch;
+	}
+	
+	private String generateYCSBQuery(long startTimestamp, long endTimestamp, int count)
+	{
+		long start = startTimestamp + (long)(rand.nextInt((int)(endTimestamp - startTimestamp - count)));
+		long end = start + count;
+		StringBuilder sb = new StringBuilder();
+		sb.append("SELECT * FROM ")
+		  .append(this.BUCKET_NAME)
+		  .append(" WHERE ")
+		  .append("host = '").append(this.hostname).append("'")
+		  .append(" AND " )
+		  .append("worker = '").append("worker" + this.id).append("'")
+		  .append(" AND " )
+		  .append("time >= ").append(start)
+		  .append(" AND ")
+		  .append("time < ").append(end)
+		  .append(";");
+		
+		return sb.toString();
 	}
 }

@@ -37,7 +37,7 @@ public class CassandraBenchmarkWorker implements Runnable {
 	private Meter errors;
 	private Timer latency;
 	
-	public CassandraBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, int rowSize, Logger log, Meter requestsMeter, Meter errorsMeter, Timer latencyMeter) {
+	public CassandraBenchmarkWorker(int id, String hostname, String[] hosts, int recordCount, int batchSize, int colCount, int rowSize, int queryRange, int queryLimit, Logger log, Meter requestsMeter, Meter errorsMeter, Timer latencyMeter) {
 		this.id = id;
 		this.hostname = hostname;
 		this.hosts = hosts;
