@@ -5,10 +5,13 @@ package com.basho.riak;
 import java.util.Random;
 import java.util.logging.Logger;
 
+import com.basho.riak.client.api.commands.timeseries.Query;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ConsistencyLevel;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
@@ -27,6 +30,8 @@ public class CassandraBenchmarkWorker implements Runnable {
 	private final String TABLE_NAME = "usertable";
 	private int colCount = 10;
 	private int rowSize = 100;
+	private int queryRange = -10;
+	private int queryLimit = 10;
 
 	private Cluster cluster;
 	private Session session;
@@ -45,6 +50,8 @@ public class CassandraBenchmarkWorker implements Runnable {
 		this.batchSize = batchSize;
 		this.colCount = colCount;
 		this.rowSize = rowSize;
+		this.queryRange = queryRange;
+		this.queryLimit = queryLimit;
 		this.rand = new Random(System.currentTimeMillis());
 		this.log = log;
 		this.requests = requestsMeter;
@@ -60,7 +67,11 @@ public class CassandraBenchmarkWorker implements Runnable {
 		cluster = Cluster.builder().addContactPoints(hosts).build();
 		session = cluster.connect(KEYSPACE_NAME);
 		
-    	runBenchmarkLoop();		
+		if (this.queryRange < 0) {
+			runBenchmarkLoop();
+		} else {
+			runQueryBenchmarkLoop();
+		}
     	
     	session.close();
     	cluster.close();
@@ -69,7 +80,7 @@ public class CassandraBenchmarkWorker implements Runnable {
 	}
 
 	private void runBenchmarkLoop() {
-		long timestamp = System.currentTimeMillis();
+		long timestamp = 1;
 		float recordsWritten = 0;
 		while (recordsWritten < this.recordCount) {			
 			Insert insertStatement = generateYCSBStatement(timestamp, this.batchSize);
@@ -87,6 +98,23 @@ public class CassandraBenchmarkWorker implements Runnable {
 			timestamp += this.batchSize;
 			recordsWritten += 1;
     	}
+	}
+	
+	private void runQueryBenchmarkLoop() {
+		int queriesIssues = 0;
+		while (queriesIssues < this.queryLimit) {
+			String queryString = generateYCSBQuery(1, this.recordCount, this.queryRange);
+			try {
+				Timer.Context context = latency.time();
+				ResultSet results = session.execute(queryString);
+				context.stop();
+				requests.mark();
+			} catch (Exception e) {
+				log.warning(e.getMessage());
+				errors.mark();
+			}
+			queriesIssues++;
+		}
 	}
 
 //	private List<Row> generateAllTypeValue(long startTimestamp, int batchSize) {
@@ -126,5 +154,25 @@ public class CassandraBenchmarkWorker implements Runnable {
 		timestamp++;
 		
 		return insertStatement;
+	}
+	
+	private String generateYCSBQuery(long startTimestamp, long endTimestamp, int count)
+	{
+		long start = startTimestamp + (long)(rand.nextInt((int)(endTimestamp - startTimestamp - count)));
+		long end = start + count;
+		StringBuilder sb = new StringBuilder();
+		sb.append("SELECT * FROM ")
+		  .append(this.TABLE_NAME)
+		  .append(" WHERE ")
+		  .append("family = '").append(this.hostname).append("'")
+		  .append(" AND " )
+		  .append("series = '").append("worker" + this.id).append("'")
+		  .append(" AND " )
+		  .append("time >= ").append(start)
+		  .append(" AND ")
+		  .append("time < ").append(end)
+		  .append(";");
+		
+		return sb.toString();
 	}
 }
