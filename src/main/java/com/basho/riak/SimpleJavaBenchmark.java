@@ -113,7 +113,12 @@ public class SimpleJavaBenchmark
     	for (String host : hosts) {
     		log.info("   " + host);
     	}
-    	log.info("Record Count: " + recordCount);
+    	
+    	if (queryRange < 0) {
+    		log.info("Record Count: " + recordCount);
+    	} else {
+    		log.info("Query Count: " + queryLimit);
+    	}
     	log.info("Batch Size: " + batchSize);
         log.info("Column Count: " + colCount);
         log.info("Cell Size: " + rowSize);
@@ -167,7 +172,7 @@ public class SimpleJavaBenchmark
     	reporter.stop();
     	reporter.close();
     	
-    	log.info("Records Written: " + requestsMeter.getCount());
+    	log.info("Ops Performed: " + requestsMeter.getCount());
     	log.info("Throughput: " + requestsMeter.getMeanRate());
     	log.info("Total Run Time: " + (endTime - reporter.startTime()) + " ms");
     	

@@ -120,12 +120,9 @@ public class RiakBenchmarkWorker<QueryResult> implements Runnable {
 				com.basho.riak.client.core.query.timeseries.QueryResult queryResult = client.execute(query);
 				context.stop();
 				requests.mark();
-			} catch (ExecutionException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			} catch (Exception e) {
+				log.warning(e.getMessage());
+				errors.mark();
 			}
 			queriesIssues++;
 		}
