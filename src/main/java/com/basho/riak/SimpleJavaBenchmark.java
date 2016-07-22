@@ -144,7 +144,7 @@ public class SimpleJavaBenchmark
     	
     	// Setup and execute all worker threads
     	ExecutorService executor = Executors.newFixedThreadPool(workerPoolSize);
-    	log.info("Starting " + workerPoolSize + " threads writing " + (recordCount / workerPoolSize) + " operations each");
+    	log.info("Starting " + workerPoolSize + " threads performing " + (recordCount / workerPoolSize) + " " + ((queryRange > 0) ? "read" : "write") + " operations each");
     	
     	for (int i = 0; i < workerPoolSize; i++) {
     		Runnable worker;
